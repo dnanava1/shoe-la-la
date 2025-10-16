@@ -77,11 +77,6 @@ SELECTORS_PRICING = {
     'discount': '[data-testid="OfferPercentage"]'
 }
 
-# Special tags selectors
-SELECTORS_SPECIAL_TAGS = {
-    'low_stock': '#low-inventory-message-container, [data-testid="low-inventory-message"]'
-}
-
 # ============================================================================
 # CSV CONFIGURATION
 # ============================================================================
@@ -113,7 +108,6 @@ CSV_HEADERS = {
         'price',
         'original_price',
         'discount_percent',
-        'special_tags'
     ]
 }
 

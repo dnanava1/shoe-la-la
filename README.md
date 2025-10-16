@@ -24,7 +24,6 @@ nike-scraper/
 │   ├── color_extractor.py         # Color variation extraction
 │   ├── size_extractor.py          # Size availability extraction
 │   ├── pricing_extractor.py       # Price and discount extraction
-│   └── tag_extractor.py           # Special tags extraction
 │
 └── utils/
     ├── __init__.py
@@ -45,7 +44,6 @@ nike-scraper/
   - Size availability for each color
   - Current and original pricing
   - Discount percentages
-  - Special tags (e.g., "Low Stock")
 - **Robust Scraping**:
   - Handles lazy loading with intelligent scrolling
   - Anti-detection browser configuration
@@ -117,30 +115,6 @@ TEST_MODE_PRODUCT_LIMIT = 5  # Only scrape 5 products
 2. **Create/modify extractor** in `scraper/` directory
 3. **Update CSV headers** in `config/constants.py`
 4. **Update data collection** in appropriate scraper class
-
-### Adding New Special Tags
-
-Edit `scraper/tag_extractor.py`:
-```python
-def extract_tags(self, page):
-    special_tags = []
-    
-    # Existing checks...
-    low_stock = self._check_low_stock(page)
-    if low_stock:
-        special_tags.append(low_stock)
-    
-    # Add your new check
-    new_release = self._check_new_release(page)
-    if new_release:
-        special_tags.append(new_release)
-    
-    return ", ".join(special_tags)
-
-def _check_new_release(self, page):
-    # Your implementation here
-    pass
-```
 
 ## Logging
 

@@ -5,7 +5,6 @@ Extracts size options, availability, and pricing information
 
 from config.constants import SELECTORS_PRODUCT_DETAIL, DEFAULT_VALUES
 from scraper.pricing_extractor import PricingExtractor
-from scraper.tag_extractor import TagExtractor
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -16,7 +15,6 @@ class SizeExtractor:
     
     def __init__(self):
         self.pricing_extractor = PricingExtractor()
-        self.tag_extractor = TagExtractor()
     
     def extract_sizes(self, page, unique_color_id, color_product_id):
         """
@@ -33,8 +31,6 @@ class SizeExtractor:
         sizes = []
         
         try:
-            # Extract special tags once for all sizes
-            special_tags = self.tag_extractor.extract_tags(page)
             
             # Find size grid
             size_grid = page.query_selector(SELECTORS_PRODUCT_DETAIL['size_grid'])
@@ -52,7 +48,6 @@ class SizeExtractor:
                             unique_color_id,
                             color_product_id,
                             pricing_data,
-                            special_tags
                         )
                         if size_data:
                             sizes.append(size_data)
@@ -65,7 +60,7 @@ class SizeExtractor:
         
         return sizes
     
-    def _extract_size_data(self, size_item, unique_color_id, color_product_id, pricing_data, special_tags):
+    def _extract_size_data(self, size_item, unique_color_id, color_product_id, pricing_data):
         """Extract data for a single size option"""
         size_data = {}
         
@@ -88,8 +83,6 @@ class SizeExtractor:
         
         # Add pricing data
         size_data.update(pricing_data)
-        
-        # Add special tags
-        size_data['special_tags'] = special_tags
+
         
         return size_data
