@@ -3,7 +3,7 @@ Product data extraction from main listing page
 Extracts basic product information from product cards
 """
 
-import uuid
+import hashlib
 from config.constants import SELECTORS_MAIN_PRODUCT, BASE_URL, DEFAULT_VALUES
 from utils.logger import setup_logger
 
@@ -14,9 +14,10 @@ class ProductExtractor:
     """Extracts product data from listing page cards"""
     
     @staticmethod
-    def generate_product_id():
-        """Generate unique main product ID"""
-        return f"PROD-{uuid.uuid4().hex[:8].upper()}"
+    def generate_product_id(base_url):
+        # Create consistent hash from URL
+        url_hash = hashlib.md5(base_url.encode()).hexdigest()[:8].upper()
+        return f"PROD-{url_hash}"
     
     def extract_main_product(self, card):
         """
@@ -29,8 +30,11 @@ class ProductExtractor:
             dict: Product data or None if extraction fails
         """
         try:
+
+            base_url = self._extract_url(card)
             product_data = {
-                'main_product_id': self.generate_product_id()
+                'main_product_id': self.generate_product_id(base_url),
+                'base_url': base_url
             }
             
             # Extract product name
