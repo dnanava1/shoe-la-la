@@ -3,7 +3,7 @@ Browser management and scrolling utilities
 Handles browser setup, page configuration, and lazy loading
 """
 
-import time
+import asyncio
 from config.constants import (
     BROWSER_CONFIG, DELAY_SCROLL, SCROLL_PAUSE_INTERVAL,
     NO_NEW_PRODUCTS_THRESHOLD
@@ -16,31 +16,31 @@ logger = setup_logger(__name__)
 class BrowserManager:
     """Manages browser setup and page interactions"""
     
-    def setup_browser(self, playwright):
+    async def setup_browser(self, playwright):
         """Initialize browser and context with anti-detection settings"""
         logger.info("Launching browser...")
         
-        browser = playwright.chromium.launch(
+        browser = await playwright.chromium.launch(
             headless=BROWSER_CONFIG['headless'],
             args=BROWSER_CONFIG['args']
         )
         
-        context = browser.new_context(
+        context = await browser.new_context(
             viewport=BROWSER_CONFIG['viewport'],
             user_agent=BROWSER_CONFIG['user_agent']
         )
         
         return browser, context
     
-    def setup_page(self, page):
+    async def setup_page(self, page):
         """Configure page with anti-detection scripts"""
-        page.add_init_script("""
+        await page.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             });
         """)
     
-    def scroll_and_load(self, page, max_scrolls):
+    async def scroll_and_load(self, page, max_scrolls):
         """
         Scroll page to trigger lazy loading of products
         
@@ -56,14 +56,14 @@ class BrowserManager:
         
         while scrolls < max_scrolls:
             # Get current product count
-            current_products = len(page.query_selector_all('figure'))
+            current_products = len(await page.query_selector_all('figure'))
             
             # Scroll to bottom
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            time.sleep(DELAY_SCROLL)
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            await asyncio.sleep(DELAY_SCROLL)
             
             # Check for new products
-            new_product_count = len(page.query_selector_all('figure'))
+            new_product_count = len(await page.query_selector_all('figure'))
             
             if new_product_count > last_product_count:
                 # New products loaded
@@ -86,9 +86,9 @@ class BrowserManager:
             # Periodic pause to let page catch up
             if scrolls % SCROLL_PAUSE_INTERVAL == 0:
                 logger.info("--- Pausing to let page stabilize ---")
-                time.sleep(5)
+                await asyncio.sleep(5)
         
-        final_count = len(page.query_selector_all('figure'))
+        final_count = len(await page.query_selector_all('figure'))
         logger.info(f"✓ Scrolling finished: {final_count} total products")
         
         return final_count

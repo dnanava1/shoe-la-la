@@ -4,6 +4,7 @@ Orchestrates the scraping workflow and coordinates between modules
 """
 
 import time
+import asyncio
 from datetime import datetime
 
 from scraper.nike_scraper import NikeScraper
@@ -14,7 +15,7 @@ from utils.historical_tracker import HistoricalTracker
 logger = setup_logger(__name__)
 
 
-def main():
+async def main():
     """Main execution flow"""
     start_time = time.time()
 
@@ -31,7 +32,7 @@ def main():
 
         # Execute scraping workflow
         logger.info("Starting scraping process...")
-        main_products, color_variations, size_availability = scraper.scrape()
+        main_products, color_variations, size_availability = await scraper.scrape()
 
         # Save results
         if main_products:
@@ -111,4 +112,4 @@ def format_duration(seconds):
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

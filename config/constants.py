@@ -96,12 +96,16 @@ CSV_HEADERS = {
         'color_product_id',
         'color_name',
         'color_image_url',
-        'color_url'
+        'color_url',
+        'style',
+        'shown',
     ],
     'size_availability': [
         'unique_size_id',
         'unique_color_id',
         'color_product_id',
+        'main_product_id',
+        'color_name',
         'size',
         'size_label',
         'available',
@@ -147,11 +151,14 @@ DEBUG_CONFIG = {
 
 # Test mode (set to True to limit scraping for testing)
 TEST_MODE = True
-TEST_MODE_PRODUCT_LIMIT = 2
+TEST_MODE_PRODUCT_LIMIT = 10
 
 # ============================================================================
 # HISTORICAL TRACKING CONFIGURATION
 # ============================================================================
+
+# Maximum number of concurrent product page requests
+MAX_CONCURRENT_REQUESTS = 15
 
 # Historical data file location
 HISTORICAL_FILE_PATH = 'historical_size_availability.csv'
