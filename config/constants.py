@@ -179,3 +179,11 @@ HISTORICAL_TRACKED_COLUMNS = [
     'original_price',
     'discount_percent'
 ]
+
+# All columns for historical file
+HISTORICAL_ALL_COLUMNS = (
+    HISTORICAL_STATIC_COLUMNS +
+    ['timestamp'] +
+    HISTORICAL_TRACKED_COLUMNS +
+    ['change_type']
+)
