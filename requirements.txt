@@ -6,3 +6,4 @@ gspread==6.1.2
 asyncio==3.4.3
 python-dotenv==1.0.0
 pathlib
+pandas
