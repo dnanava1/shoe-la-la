@@ -66,7 +66,10 @@ SELECTORS_PRODUCT_DETAIL = {
     'size_grid': '[data-testid="pdp-grid-selector-grid"]',
     'size_items': '[data-testid="pdp-grid-selector-item"]',
     'size_label': 'label',
-    'size_input': 'input'
+    'size_input': 'input',
+    'fit_container': '[data-testid="product-group-toggle"]', # The main fit selection box
+    'fit_items': '.nds-radio',                          # Each individual fit <div class="nds-radio">
+    'fit_label': 'label',
 }
 
 # Pricing selectors
@@ -90,8 +93,15 @@ CSV_HEADERS = {
         'base_url',
         'tag'
     ],
+    'fit_variations': [
+        'unique_fit_id',
+        'main_product_id',
+        'fit_product_id',
+        'fit_name',
+    ],
     'color_variations': [
         'unique_color_id',
+        'unique_fit_id',
         'main_product_id',
         'color_product_id',
         'color_name',
@@ -103,9 +113,11 @@ CSV_HEADERS = {
     'size_availability': [
         'unique_size_id',
         'unique_color_id',
+        'unique_fit_id',
         'color_product_id',
         'main_product_id',
         'color_name',
+        'fit_name',
         'size',
         'size_label',
         'available',
@@ -118,6 +130,7 @@ CSV_HEADERS = {
 # CSV filenames
 CSV_FILENAMES = {
     'main_products': 'nike_main_products.csv',
+    'fit_variations': 'nike_fit_variations.csv',
     'color_variations': 'nike_color_variations.csv',
     'size_availability': 'nike_size_availability.csv'
 }
@@ -134,6 +147,9 @@ DEFAULT_VALUES = {
     'unknown_color': 'Unknown Color',
     'default_color_id': 'DEFAULT',
     'default_color_name': 'Default Color',
+    'unknown_fit': 'Unknown Fit',
+    'default_fit_id': 'DEFAULT',
+    'default_fit_name': 'Default Fit',
     'no_discount': '0'
 }
 
@@ -151,7 +167,7 @@ DEBUG_CONFIG = {
 
 # Test mode (set to True to limit scraping for testing)
 TEST_MODE = True
-TEST_MODE_PRODUCT_LIMIT = 10
+TEST_MODE_PRODUCT_LIMIT = 25
 
 # ============================================================================
 # HISTORICAL TRACKING CONFIGURATION
