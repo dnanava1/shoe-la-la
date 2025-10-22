@@ -32,6 +32,8 @@ ENV/
 *.swp
 *.swo
 
+*.csv
+
 # OS
 .DS_Store
 Thumbs.db
