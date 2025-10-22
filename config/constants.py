@@ -167,7 +167,7 @@ DEBUG_CONFIG = {
 
 # Test mode (set to True to limit scraping for testing)
 TEST_MODE = True
-TEST_MODE_PRODUCT_LIMIT = 10
+TEST_MODE_PRODUCT_LIMIT = 25
 
 # ============================================================================
 # HISTORICAL TRACKING CONFIGURATION
@@ -195,3 +195,11 @@ HISTORICAL_TRACKED_COLUMNS = [
     'original_price',
     'discount_percent'
 ]
+
+# All columns for historical file
+HISTORICAL_ALL_COLUMNS = (
+    HISTORICAL_STATIC_COLUMNS +
+    ['timestamp'] +
+    HISTORICAL_TRACKED_COLUMNS +
+    ['change_type']
+)

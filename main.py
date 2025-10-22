@@ -18,13 +18,11 @@ logger = setup_logger(__name__)
 async def main():
     """Main execution flow"""
     start_time = time.time()
-
     # Print header
     print("=" * 60)
-    print("Nike Shoes Scraper - Professional Edition")
+    print("Nike Shoes Scraper")
     print("=" * 60)
     print()
-
     try:
         # Initialize scraper
         logger.info("Initializing Nike scraper...")
@@ -96,10 +94,18 @@ def print_historical_stats(historical_tracker):
         print("\n" + "=" * 60)
         print("HISTORICAL TRACKING")
         print("=" * 60)
-        print(f"📊 Total Products Tracked:  {stats['total_products']:>6}")
-        print(f"🔄 Total Scraping Runs:     {stats['scraping_runs']:>6}")
-        print(f"📈 Total Columns: g;       {stats['total_columns']:>6}")
-        print(f"📅 Latest Run:              {stats['timestamps'][-1] if stats['timestamps'] else 'N/A'}")
+        print(f"📊 Total Records:           {stats['total_records']:>6}")
+        print(f"🔢 Unique Products:         {stats['unique_products']:>6}")
+        print(f"🔄 Scraping Runs:           {stats['scraping_runs']:>6}")
+        print(f"📈 Initial Records:         {stats['initial_records']:>6}")
+        print(f"📉 Change Records:          {stats['change_records']:>6}")
+
+        if stats.get('change_counts'):
+            print(f"\nChange Types:")
+            for change_type, count in sorted(stats['change_counts'].items()):
+                print(f"   {change_type:25s} {count:>6}")
+
+        print(f"\n📅 Latest Run:              {stats['timestamps'][-1] if stats['timestamps'] else 'N/A'}")
         print("=" * 60)
     else:
         print("\n" + "=" * 60)
