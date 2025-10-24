@@ -33,6 +33,7 @@ ENV/
 *.swo
 
 *.csv
+*.env
 
 # OS
 .DS_Store
