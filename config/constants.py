@@ -167,7 +167,7 @@ DEBUG_CONFIG = {
 
 # Test mode (set to True to limit scraping for testing)
 TEST_MODE = True
-TEST_MODE_PRODUCT_LIMIT = 25
+TEST_MODE_PRODUCT_LIMIT = 5
 
 # ============================================================================
 # HISTORICAL TRACKING CONFIGURATION
@@ -180,26 +180,11 @@ MAX_CONCURRENT_REQUESTS = 15
 HISTORICAL_FILE_PATH = 'historical_size_availability.csv'
 
 # Static columns that don't change (used as keys/metadata)
-HISTORICAL_STATIC_COLUMNS = [
-    'unique_size_id',
-    'unique_color_id',
-    'color_product_id',
-    'size',
-    'size_label'
-]
+HISTORICAL_STATIC_COLUMNS = ['unique_size_id']
 
 # Columns to track over time (will have timestamp prefix)
-HISTORICAL_TRACKED_COLUMNS = [
-    'available',
-    'price',
-    'original_price',
-    'discount_percent'
-]
+HISTORICAL_TRACKED_COLUMNS = ['available', 'price', 'original_price', 'discount_percent']
+
 
 # All columns for historical file
-HISTORICAL_ALL_COLUMNS = (
-    HISTORICAL_STATIC_COLUMNS +
-    ['timestamp'] +
-    HISTORICAL_TRACKED_COLUMNS +
-    ['change_type']
-)
+HISTORICAL_ALL_COLUMNS = HISTORICAL_STATIC_COLUMNS + HISTORICAL_TRACKED_COLUMNS + ['capture_timestamp', 'change_type']
