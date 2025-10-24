@@ -41,7 +41,7 @@ class HistoricalTracker:
                 historical_df = pd.read_csv(self.historical_file_path)
                 logger.info(f"Loaded existing historical data: {len(historical_df)} records")
             else:
-                historical_df = pd.DataFrame(columns=self.ALL_COLUMNS)
+                historical_df = pd.DataFrame(columns=HISTORICAL_ALL_COLUMNS)
                 logger.info("Creating new historical data file")
 
             # Detect changes and create new records
