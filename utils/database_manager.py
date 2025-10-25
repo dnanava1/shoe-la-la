@@ -48,11 +48,7 @@ class DatabaseManager:
         query = """
         INSERT INTO main_products (main_product_id, name, category, base_url, tag)
         VALUES (%s, %s, %s, %s, %s)
-        ON CONFLICT (main_product_id) DO UPDATE
-        SET name = EXCLUDED.name,
-            category = EXCLUDED.category,
-            base_url = EXCLUDED.base_url,
-            tag = EXCLUDED.tag;
+        ON CONFLICT (main_product_id) DO NOTHING;
         """
         data = [
             (p.get('main_product_id'), p.get('name'), p.get('category'),
@@ -66,8 +62,7 @@ class DatabaseManager:
         query = """
         INSERT INTO fit_variants (unique_fit_id, main_product_id, fit_product_id, fit_name)
         VALUES (%s, %s, %s, %s)
-        ON CONFLICT (unique_fit_id) DO UPDATE
-        SET fit_name = EXCLUDED.fit_name;
+        ON CONFLICT (unique_fit_id) DO NOTHING;
         """
         data = [
             (f.get('unique_fit_id'), f.get('main_product_id'),
@@ -85,12 +80,7 @@ class DatabaseManager:
             color_image_url, color_url, style, shown
         )
         VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-        ON CONFLICT (unique_color_id) DO UPDATE
-        SET color_name = EXCLUDED.color_name,
-            color_image_url = EXCLUDED.color_image_url,
-            color_url = EXCLUDED.color_url,
-            style = EXCLUDED.style,
-            shown = EXCLUDED.shown;
+        ON CONFLICT (unique_color_id) DO NOTHING;
         """
         data = [
             (c.get('unique_color_id'), c.get('unique_fit_id'),
@@ -106,9 +96,7 @@ class DatabaseManager:
         query = """
         INSERT INTO size_variants (unique_size_id, unique_color_id, size, size_label)
         VALUES (%s,%s,%s,%s)
-        ON CONFLICT (unique_size_id) DO UPDATE
-        SET size = EXCLUDED.size,
-            size_label = EXCLUDED.size_label;
+        ON CONFLICT (unique_size_id) DO NOTHING;
         """
         data = [
             (s.get('unique_size_id'), s.get('unique_color_id'),
@@ -127,7 +115,26 @@ class DatabaseManager:
             logger.info("No historical records to save.")
             return
 
-        # 🟢 Remove 'timestamp' from both column list and values
+        # 🧹 Convert invalid numeric strings ("N/A", "", etc.) to None
+        def safe_float(value):
+            if value in ("N/A", "", None):
+                return None
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return None
+
+        cleaned_records = []
+        for rec in records:
+            cleaned_records.append({
+                "unique_size_id": rec.get("unique_size_id"),
+                "available": rec.get("available"),
+                "price": safe_float(rec.get("price")),
+                "original_price": safe_float(rec.get("original_price")),
+                "discount_percent": safe_float(rec.get("discount_percent")),
+                "change_type": rec.get("change_type"),
+            })
+
         query = """
         INSERT INTO prices (
             unique_size_id,
@@ -141,8 +148,8 @@ class DatabaseManager:
 
         try:
             with self.conn.cursor() as cur:
-                execute_batch(cur, query, records, page_size=500)
-            logger.info(f"✅ Inserted {len(records)} new historical records into prices")
+                execute_batch(cur, query, cleaned_records, page_size=500)
+            logger.info(f"✅ Inserted {len(cleaned_records)} new historical records into prices")
         except Exception as e:
             logger.error(f"❌ Error inserting historical changes: {e}")
 
