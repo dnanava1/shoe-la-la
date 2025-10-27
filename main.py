@@ -30,7 +30,8 @@ async def main():
 
         # Execute scraping workflow
         logger.info("Starting scraping process...")
-        main_products, color_variations, size_availability = await scraper.scrape()
+        # === FIX: Unpack 4 values instead of 3 ===
+        main_products, fit_variations, color_variations, size_availability = await scraper.scrape()
 
         # Save results
         if main_products:
@@ -38,6 +39,7 @@ async def main():
             file_manager = FileManager()
             output_dir = file_manager.save_all_data(
                 main_products,
+                fit_variations,     # === FIX: Pass new list ===
                 color_variations,
                 size_availability,
                 start_time
@@ -47,10 +49,12 @@ async def main():
             logger.info("Updating historical data...")
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             historical_tracker = HistoricalTracker()
-            historical_tracker.update_historical_data(size_availability, timestamp)
+            # Note: historical_tracker only tracks size_availability, so no change here
+            historical_tracker.update_historical_data(size_availability, timestamp) 
 
             # Print summary
-            print_summary(main_products, color_variations, size_availability, output_dir)
+            # === FIX: Pass new list to summary function ===
+            print_summary(main_products, fit_variations, color_variations, size_availability, output_dir)
             print_historical_stats(historical_tracker)
         else:
             logger.warning("No data collected. Scraping may have failed.")
@@ -69,14 +73,16 @@ async def main():
     print("=" * 60)
 
 
-def print_summary(main_products, color_variations, size_availability, output_dir):
+# === FIX: Accept fit_variations and print its count ===
+def print_summary(main_products, fit_variations, color_variations, size_availability, output_dir):
     """Print scraping summary"""
     print("\n" + "=" * 60)
     print("SCRAPING SUMMARY")
     print("=" * 60)
-    print(f"✅ Main Products:       {len(main_products):>6}")
-    print(f"✅ Color Variations:    {len(color_variations):>6}")
-    print(f"✅ Size Entries:        {len(size_availability):>6}")
+    print(f"✅ Main Products:       {len(main_products):>6}")
+    print(f"✅ Fit Variations:      {len(fit_variations):>6}")
+    print(f"✅ Color Variations:    {len(color_variations):>6}")
+    print(f"✅ Size Entries:        {len(size_availability):>6}")
     print(f"\n📁 Output Directory: {output_dir}")
     print("=" * 60)
 
