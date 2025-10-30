@@ -166,8 +166,9 @@ DEBUG_CONFIG = {
 }
 
 # Test mode (set to True to limit scraping for testing)
-TEST_MODE = True
-TEST_MODE_PRODUCT_LIMIT = 25
+TEST_MODE = False
+# Number of products to scrape in test mode
+TEST_MODE_PRODUCT_LIMIT = 50
 
 # ============================================================================
 # HISTORICAL TRACKING CONFIGURATION

@@ -21,12 +21,16 @@ class HistoricalTracker:
         try:
             new_df = pd.DataFrame(new_size_availability)
             old_df = self.db_manager.fetch_latest_historical_data()
-            logger.info(f"Loaded {len(old_df)} latest historical records from DB")
+            if old_df.empty:
+                logger.info("No existing historical data found in DB.")
+            else:
+                logger.info(f"Loaded {len(old_df)} latest historical records from DB")
 
             new_records = self._detect_changes(old_df, new_df, timestamp)
 
             if new_records is not None and not new_records.empty:
                 logger.info(f"✅ Detected {len(new_records)} new changes")
+                # The 'timestamp' key in _create_record matches the new_records dict
                 self.db_manager.save_price_logs(new_records.to_dict(orient="records"))
                 logger.info("📦 Saved changes to RDS successfully")
             else:
@@ -46,19 +50,19 @@ class HistoricalTracker:
         """Detect changes between old (historical) and new data"""
         new_records = []
 
-        # Get the latest known values by unique_size_id
-        # Get the latest known values by unique_size_id
         if not historical_df.empty:
-            # Ensure timestamp is in datetime format, just in case
-            historical_df['timestamp'] = pd.to_datetime(historical_df['timestamp'])
+            # *** FIX 1: Use 'capture_timestamp' (the real column name from DB) ***
+            if 'capture_timestamp' not in historical_df.columns:
+                logger.error("DB data is missing 'capture_timestamp'. Cannot detect changes.")
+                return None
             
-            # 1. Sort by timestamp so the newest record is first
-            historical_df = historical_df.sort_values(by='timestamp', ascending=False)
+            historical_df['capture_timestamp'] = pd.to_datetime(historical_df['capture_timestamp'])
             
-            # 2. Drop all duplicates, keeping only the first (newest) one
+            # This logic is correct IF fetch_latest_historical_data() ever returns multiple
+            # records for the same unique_size_id (which it shouldn't, but this is safe).
+            historical_df = historical_df.sort_values(by='capture_timestamp', ascending=False)
             latest_df = historical_df.drop_duplicates(subset='unique_size_id', keep='first')
             
-            # 3. Now, set the index on this clean, de-duplicated DataFrame
             latest_historical = latest_df.set_index('unique_size_id')
         else:
             latest_historical = pd.DataFrame()
@@ -79,6 +83,9 @@ class HistoricalTracker:
                     record = self._create_record(new_row, timestamp, change_type)
                     new_records.append(record)
                     logger.info(f"  CHANGED: {unique_size_id} → {change_type}")
+                # else:
+                #    logger.debug(f"  NO CHANGE: {unique_size_id}")
+
 
         return pd.DataFrame(new_records) if new_records else None
 
@@ -88,26 +95,54 @@ class HistoricalTracker:
         changes = []
 
         for col in tracked:
-            old_val = self._normalize_value(old_row[col])
-            new_val = self._normalize_value(new_row[col])
+            # old_row is a pandas Series, can be missing keys if DB columns are null
+            old_val = self._normalize_value(old_row.get(col)) 
+            new_val = self._normalize_value(new_row.get(col))
             if old_val != new_val:
                 changes.append(col)
         return changes
 
     def _normalize_value(self, value):
-        """Normalize values for comparison"""
+        """
+        *** FIX 2: Robust normalization to prevent false-positive changes ***
+        Normalize values for comparison across different types (str, bool, num, None).
+        """
+        
+        # 1. Handle booleans
+        if isinstance(value, bool):
+            return value  # Returns True or False
+        if isinstance(value, str):
+            val_lower = value.strip().lower()
+            if val_lower == 'true':
+                return True
+            if val_lower == 'false':
+                return False
+            # Fall through for other strings (like 'N/A')
+
+        # 2. Handle nulls
+        # pd.isna() handles np.nan, pd.NaT, etc.
         if value in ("N/A", "", None) or pd.isna(value):
             return None
+
+        # 3. Handle numerics
         try:
+            # Convert to float for a consistent numeric comparison
+            # This makes 65, 65.0, and "65" all equal
             return float(value)
         except (ValueError, TypeError):
+            # Fallback for non-numeric, non-null strings
             return str(value).strip().upper()
 
+
     def _create_record(self, row, timestamp, change_type):
-        """Format a new record for insertion"""
+        """
+        Format a new record for insertion.
+        The 'timestamp' key here is the *new* timestamp for this scrape,
+        which will become the 'capture_timestamp' in the database.
+        """
         return {
             'unique_size_id': row.get('unique_size_id'),
-            'timestamp': timestamp,
+            'timestamp': timestamp, # This is correct, it's the new scrape's timestamp
             'available': row.get('available'),
             'price': row.get('price'),
             'original_price': row.get('original_price'),
