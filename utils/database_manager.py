@@ -229,3 +229,32 @@ class DatabaseManager:
             logger.info(f"✅ Inserted/updated {len(data)} records into {table_name}")
         except Exception as e:
             logger.error(f"❌ Error inserting into {table_name}: {e}")
+
+
+    # ========== Scheduler Compatibility Layer ==========
+    def get_connection(self):
+        """Return an active database connection"""
+        return self.conn
+
+    def return_connection(self, conn):
+        """For compatibility with pooled connections (no-op here)"""
+        pass
+
+    def close_all_connections(self):
+        """Close the active connection"""
+        try:
+            if self.conn:
+                self.conn.close()
+        except Exception as e:
+            print(f"Error closing DB connection: {e}")
+
+    def test_connection(self):
+        """Test if connection works"""
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("SELECT 1;")
+            cursor.close()
+            return True
+        except Exception as e:
+            print(f"DB connection test failed: {e}")
+            return False
