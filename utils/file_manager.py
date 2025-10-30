@@ -16,12 +16,14 @@ logger = setup_logger(__name__)
 class FileManager:
     """Manages file operations for scraped data"""
     
-    def save_all_data(self, main_products, color_variations, size_availability, start_time):
+    # === FIX: Add fit_variations to function definition ===
+    def save_all_data(self, main_products, fit_variations, color_variations, size_availability, start_time):
         """
         Save all scraped data to CSV files
         
         Args:
             main_products: List of main product data
+            fit_variations: List of fit variation data
             color_variations: List of color variation data
             size_availability: List of size availability data
             start_time: Timestamp when scraping started
@@ -41,6 +43,11 @@ class FileManager:
         self.save_to_csv(main_products, CSV_HEADERS['main_products'], main_file)
         logger.info(f"Saved {len(main_products)} main products")
         
+        # === FIX: Add saving logic for fit_variations ===
+        fit_file = os.path.join(dir_name, CSV_FILENAMES['fit_variations'])
+        self.save_to_csv(fit_variations, CSV_HEADERS['fit_variations'], fit_file)
+        logger.info(f"Saved {len(fit_variations)} fit variations")
+        
         # Save color variations
         color_file = os.path.join(dir_name, CSV_FILENAMES['color_variations'])
         self.save_to_csv(color_variations, CSV_HEADERS['color_variations'], color_file)
@@ -52,7 +59,8 @@ class FileManager:
         logger.info(f"Saved {len(size_availability)} size availability entries")
         
         # Create time log
-        self.create_time_log(start_time, timestamp, main_products, color_variations, size_availability)
+        # === FIX: Pass fit_variations to time log function ===
+        self.create_time_log(start_time, timestamp, main_products, fit_variations, color_variations, size_availability)
         
         return dir_name
     
@@ -65,16 +73,25 @@ class FileManager:
             headers: List of column headers
             filename: Output filename
         """
+        # === Add check for empty data to avoid errors ===
+        if not data:
+            logger.warning(f"No data for {filename}, skipping.")
+            return
+
         try:
             with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=headers)
+                # Filter headers to only include those present in the data
+                # This prevents errors if data is missing optional keys
+                valid_headers = [h for h in headers if h in data[0]]
+                writer = csv.DictWriter(csvfile, fieldnames=valid_headers, extrasaction='ignore')
                 writer.writeheader()
                 writer.writerows(data)
         except Exception as e:
             logger.error(f"Error saving {filename}: {e}")
             raise
     
-    def create_time_log(self, start_time, timestamp, main_products, color_variations, size_availability):
+    # === FIX: Add fit_variations to function definition and log content ===
+    def create_time_log(self, start_time, timestamp, main_products, fit_variations, color_variations, size_availability):
         """
         Create a time log file with scraping statistics
         
@@ -82,6 +99,7 @@ class FileManager:
             start_time: Timestamp when scraping started
             timestamp: Formatted timestamp string
             main_products: List of main products
+            fit_variations: List of fit variations
             color_variations: List of color variations
             size_availability: List of size availability data
         """
@@ -101,19 +119,23 @@ Total Duration: {hours}h {minutes}m {seconds}s
 Scraping Statistics:
 ------------------------------------
 Main Products:          {len(main_products):>6}
+Fit Variations:         {len(fit_variations):>6}
 Color Variations:       {len(color_variations):>6}
 Size Availability:      {len(size_availability):>6}
 ------------------------------------
-Total Records:          {len(main_products) + len(color_variations) + len(size_availability):>6}
+Total Records:          {len(main_products) + len(fit_variations) + len(color_variations) + len(size_availability):>6}
 
 Average Time per Product: {total_time / len(main_products) if main_products else 0:.2f}s
 """
         
+        # === FIX: Join path to save log inside the output directory ===
+        dir_name = f"{OUTPUT_DIR_PREFIX}_{timestamp}"
         log_filename = f"time_log_{timestamp}.txt"
+        log_filepath = os.path.join(dir_name, log_filename)
         
         try:
-            with open(log_filename, 'w', encoding='utf-8') as f:
+            with open(log_filepath, 'w', encoding='utf-8') as f:
                 f.write(log_content)
-            logger.info(f"Time log saved: {log_filename}")
+            logger.info(f"Time log saved: {log_filepath}")
         except Exception as e:
             logger.error(f"Error saving time log: {e}")
