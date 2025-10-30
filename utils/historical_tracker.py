@@ -47,8 +47,19 @@ class HistoricalTracker:
         new_records = []
 
         # Get the latest known values by unique_size_id
+        # Get the latest known values by unique_size_id
         if not historical_df.empty:
-            latest_historical = historical_df.set_index('unique_size_id')
+            # Ensure timestamp is in datetime format, just in case
+            historical_df['timestamp'] = pd.to_datetime(historical_df['timestamp'])
+            
+            # 1. Sort by timestamp so the newest record is first
+            historical_df = historical_df.sort_values(by='timestamp', ascending=False)
+            
+            # 2. Drop all duplicates, keeping only the first (newest) one
+            latest_df = historical_df.drop_duplicates(subset='unique_size_id', keep='first')
+            
+            # 3. Now, set the index on this clean, de-duplicated DataFrame
+            latest_historical = latest_df.set_index('unique_size_id')
         else:
             latest_historical = pd.DataFrame()
 
@@ -85,7 +96,7 @@ class HistoricalTracker:
 
     def _normalize_value(self, value):
         """Normalize values for comparison"""
-        if pd.isna(value) or value in ['', None]:
+        if value in ("N/A", "", None) or pd.isna(value):
             return None
         try:
             return float(value)
