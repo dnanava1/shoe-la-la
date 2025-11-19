@@ -11,7 +11,10 @@ logger = setup_logger(__name__)
 
 class HistoricalTracker:
     """Tracks size availability and pricing changes over time (stored in RDS)"""
+    """Tracks size availability and pricing changes over time (stored in RDS)"""
 
+    def __init__(self, db_manager):
+        self.db_manager = db_manager
     def __init__(self, db_manager):
         self.db_manager = db_manager
 
@@ -35,6 +38,7 @@ class HistoricalTracker:
                 logger.info("📦 Saved changes to RDS successfully")
             else:
                 logger.info("✅ No changes detected - historical data unchanged")
+                logger.info("✅ No changes detected - historical data unchanged")
 
             return True
 
@@ -46,7 +50,12 @@ class HistoricalTracker:
     # CHANGE DETECTION
     # -----------------------------------------------------------------------
 
+    # -----------------------------------------------------------------------
+    # CHANGE DETECTION
+    # -----------------------------------------------------------------------
+
     def _detect_changes(self, historical_df, new_df, timestamp):
+        """Detect changes between old (historical) and new data"""
         """Detect changes between old (historical) and new data"""
         new_records = []
 
@@ -88,8 +97,11 @@ class HistoricalTracker:
 
 
         return pd.DataFrame(new_records) if new_records else None
+        return pd.DataFrame(new_records) if new_records else None
 
     def _get_changes(self, old_row, new_row):
+        """Detect which tracked columns changed"""
+        tracked = ['available', 'price', 'original_price', 'discount_percent']
         """Detect which tracked columns changed"""
         tracked = ['available', 'price', 'original_price', 'discount_percent']
         changes = []

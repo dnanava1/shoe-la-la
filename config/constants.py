@@ -182,10 +182,15 @@ HISTORICAL_FILE_PATH = 'historical_size_availability.csv'
 
 # Static columns that don't change (used as keys/metadata)
 HISTORICAL_STATIC_COLUMNS = ['unique_size_id']
+HISTORICAL_STATIC_COLUMNS = ['unique_size_id']
 
 # Columns to track over time (will have timestamp prefix)
 HISTORICAL_TRACKED_COLUMNS = ['available', 'price', 'original_price', 'discount_percent']
 
+HISTORICAL_TRACKED_COLUMNS = ['available', 'price', 'original_price', 'discount_percent']
+
 
 # All columns for historical file
+HISTORICAL_ALL_COLUMNS = HISTORICAL_STATIC_COLUMNS + HISTORICAL_TRACKED_COLUMNS + ['capture_timestamp', 'change_type']
+
 HISTORICAL_ALL_COLUMNS = HISTORICAL_STATIC_COLUMNS + HISTORICAL_TRACKED_COLUMNS + ['capture_timestamp', 'change_type']
