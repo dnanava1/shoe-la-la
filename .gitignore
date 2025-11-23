@@ -33,6 +33,7 @@ ENV/
 *.swo
 
 *.csv
+*.env
 
 # OS
 .DS_Store
@@ -44,6 +45,7 @@ error_screenshot.png
 debug_page.html
 nike_shoes_*/
 time_log_*.txt
+test_historical_tracker.py
 
 # Playwright
 playwright-report/

@@ -3,61 +3,42 @@ Historical data tracking - Change-based approach
 Tracks only when availability, pricing, or discount changes occur
 """
 
-import os
 import pandas as pd
-from config.constants import (
-    HISTORICAL_FILE_PATH,
-    HISTORICAL_STATIC_COLUMNS,
-    HISTORICAL_TRACKED_COLUMNS,
-    HISTORICAL_ALL_COLUMNS
-)
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
 
 class HistoricalTracker:
-    """Tracks size availability and pricing changes over time"""
+    """Tracks size availability and pricing changes over time (stored in RDS)"""
+    """Tracks size availability and pricing changes over time (stored in RDS)"""
 
-    def __init__(self, historical_file_path=HISTORICAL_FILE_PATH):
-        self.historical_file_path = historical_file_path
+    def __init__(self, db_manager):
+        self.db_manager = db_manager
+    def __init__(self, db_manager):
+        self.db_manager = db_manager
 
     def update_historical_data(self, new_size_availability, timestamp):
-        """
-        Update historical CSV with new scraping data
-
-        Args:
-            new_size_availability: List of dicts with new size availability data
-            timestamp: Timestamp string in format YYYYMMDD_HHMMSS
-        """
         logger.info("Updating historical size availability data...")
 
         try:
-            # Convert new data to DataFrame
             new_df = pd.DataFrame(new_size_availability)
-
-            # Load existing historical data
-            if os.path.exists(self.historical_file_path):
-                historical_df = pd.read_csv(self.historical_file_path)
-                logger.info(f"Loaded existing historical data: {len(historical_df)} records")
+            old_df = self.db_manager.fetch_latest_historical_data()
+            if old_df.empty:
+                logger.info("No existing historical data found in DB.")
             else:
-                historical_df = pd.DataFrame(columns=self.ALL_COLUMNS)
-                logger.info("Creating new historical data file")
+                logger.info(f"Loaded {len(old_df)} latest historical records from DB")
 
-            # Detect changes and create new records
-            new_records = self._detect_changes(historical_df, new_df, timestamp)
+            new_records = self._detect_changes(old_df, new_df, timestamp)
 
             if new_records is not None and not new_records.empty:
-                # Append new records to historical data
-                historical_df = pd.concat([historical_df, new_records], ignore_index=True)
-
-                # Save updated historical data
-                historical_df.to_csv(self.historical_file_path, index=False)
-                logger.info(f"✅ Added {len(new_records)} new records (changes detected)")
-                logger.info(f"   Total historical records: {len(historical_df)}")
-                logger.info(f"   Saved to: {self.historical_file_path}")
+                logger.info(f"✅ Detected {len(new_records)} new changes")
+                # The 'timestamp' key in _create_record matches the new_records dict
+                self.db_manager.save_price_logs(new_records.to_dict(orient="records"))
+                logger.info("📦 Saved changes to RDS successfully")
             else:
-                logger.info("✅ No changes detected - historical file unchanged")
+                logger.info("✅ No changes detected - historical data unchanged")
+                logger.info("✅ No changes detected - historical data unchanged")
 
             return True
 
@@ -65,218 +46,130 @@ class HistoricalTracker:
             logger.error(f"Error updating historical data: {e}", exc_info=True)
             return False
 
+    # -----------------------------------------------------------------------
+    # CHANGE DETECTION
+    # -----------------------------------------------------------------------
+
+    # -----------------------------------------------------------------------
+    # CHANGE DETECTION
+    # -----------------------------------------------------------------------
+
     def _detect_changes(self, historical_df, new_df, timestamp):
-        """
-        Detect changes between historical and new data
-
-        Args:
-            historical_df: Existing historical DataFrame
-            new_df: New data DataFrame
-            timestamp: Current timestamp string
-
-        Returns:
-            DataFrame with only records that have changes
-        """
+        """Detect changes between old (historical) and new data"""
+        """Detect changes between old (historical) and new data"""
         new_records = []
 
-        # Get the latest record for each unique_size_id from historical data
         if not historical_df.empty:
-            latest_historical = historical_df.sort_values('timestamp').groupby('unique_size_id').tail(1)
-            latest_historical = latest_historical.set_index('unique_size_id')
+            # *** FIX 1: Use 'capture_timestamp' (the real column name from DB) ***
+            if 'capture_timestamp' not in historical_df.columns:
+                logger.error("DB data is missing 'capture_timestamp'. Cannot detect changes.")
+                return None
+            
+            historical_df['capture_timestamp'] = pd.to_datetime(historical_df['capture_timestamp'])
+            
+            # This logic is correct IF fetch_latest_historical_data() ever returns multiple
+            # records for the same unique_size_id (which it shouldn't, but this is safe).
+            historical_df = historical_df.sort_values(by='capture_timestamp', ascending=False)
+            latest_df = historical_df.drop_duplicates(subset='unique_size_id', keep='first')
+            
+            latest_historical = latest_df.set_index('unique_size_id')
         else:
             latest_historical = pd.DataFrame()
 
-        # Check each new size entry
         for _, new_row in new_df.iterrows():
             unique_size_id = new_row['unique_size_id']
 
-            # Check if this product exists in historical data
             if unique_size_id not in latest_historical.index:
-                # NEW PRODUCT - Add as INITIAL
                 record = self._create_record(new_row, timestamp, 'INITIAL')
                 new_records.append(record)
                 logger.info(f"  NEW: {unique_size_id}")
             else:
-                # EXISTS - Check for changes
                 old_row = latest_historical.loc[unique_size_id]
                 changes = self._get_changes(old_row, new_row)
 
                 if changes:
-                    # CHANGED - Add new record
                     change_type = ','.join(changes)
                     record = self._create_record(new_row, timestamp, change_type)
                     new_records.append(record)
                     logger.info(f"  CHANGED: {unique_size_id} → {change_type}")
-                # else: NO CHANGE - Skip (don't add record)
+                # else:
+                #    logger.debug(f"  NO CHANGE: {unique_size_id}")
 
-        if new_records:
-            return pd.DataFrame(new_records)
-        return None
+
+        return pd.DataFrame(new_records) if new_records else None
+        return pd.DataFrame(new_records) if new_records else None
 
     def _get_changes(self, old_row, new_row):
-        """
-        Compare old and new row to detect which fields changed
-        Uses normalization to avoid false positives (e.g., 220.0 vs 220)
-
-        Returns:
-            list: List of field names that changed
-        """
+        """Detect which tracked columns changed"""
+        tracked = ['available', 'price', 'original_price', 'discount_percent']
+        """Detect which tracked columns changed"""
+        tracked = ['available', 'price', 'original_price', 'discount_percent']
         changes = []
 
-        for col in HISTORICAL_TRACKED_COLUMNS:
-            old_val = self._normalize_value(old_row[col], col)
-            new_val = self._normalize_value(new_row[col], col)
-
+        for col in tracked:
+            # old_row is a pandas Series, can be missing keys if DB columns are null
+            old_val = self._normalize_value(old_row.get(col)) 
+            new_val = self._normalize_value(new_row.get(col))
             if old_val != new_val:
                 changes.append(col)
-
         return changes
 
-    def _normalize_value(self, value, column):
+    def _normalize_value(self, value):
         """
-        Normalize values for accurate comparison
-        Handles type inconsistencies (220.0 vs 220, "True" vs True, etc.)
-
-        Args:
-            value: The value to normalize
-            column: The column name (determines normalization strategy)
-
-        Returns:
-            Normalized value for comparison
+        *** FIX 2: Robust normalization to prevent false-positive changes ***
+        Normalize values for comparison across different types (str, bool, num, None).
         """
-        # Handle NaN/None/empty
-        if pd.isna(value) or value == '' or value is None:
+        
+        # 1. Handle booleans
+        if isinstance(value, bool):
+            return value  # Returns True or False
+        if isinstance(value, str):
+            val_lower = value.strip().lower()
+            if val_lower == 'true':
+                return True
+            if val_lower == 'false':
+                return False
+            # Fall through for other strings (like 'N/A')
+
+        # 2. Handle nulls
+        # pd.isna() handles np.nan, pd.NaT, etc.
+        if value in ("N/A", "", None) or pd.isna(value):
             return None
 
-        # Numeric columns - normalize to float
-        if column in ['price', 'original_price', 'discount_percent']:
-            try:
-                return float(value)
-            except (ValueError, TypeError):
-                # Can't convert to float, treat as string
-                return str(value).strip().upper()
+        # 3. Handle numerics
+        try:
+            # Convert to float for a consistent numeric comparison
+            # This makes 65, 65.0, and "65" all equal
+            return float(value)
+        except (ValueError, TypeError):
+            # Fallback for non-numeric, non-null strings
+            return str(value).strip().upper()
 
-        # Boolean column - normalize to boolean
-        if column == 'available':
-            val_str = str(value).strip().upper()
-            # Handle various boolean representations
-            if val_str in ['TRUE', '1', 'YES', 'T', 'Y']:
-                return True
-            elif val_str in ['FALSE', '0', 'NO', 'F', 'N', '']:
-                return False
-            else:
-                # Fallback to string comparison
-                return val_str
-
-        # Default: string comparison (case-insensitive, stripped)
-        return str(value).strip().upper()
 
     def _create_record(self, row, timestamp, change_type):
-        """Create a historical record from a data row"""
-        record = {}
+        """
+        Format a new record for insertion.
+        The 'timestamp' key here is the *new* timestamp for this scrape,
+        which will become the 'capture_timestamp' in the database.
+        """
+        return {
+            'unique_size_id': row.get('unique_size_id'),
+            'timestamp': timestamp, # This is correct, it's the new scrape's timestamp
+            'available': row.get('available'),
+            'price': row.get('price'),
+            'original_price': row.get('original_price'),
+            'discount_percent': row.get('discount_percent'),
+            'change_type': change_type
+        }
 
-        # Add static columns
-        for col in HISTORICAL_STATIC_COLUMNS:
-            record[col] = row.get(col, '')
-
-        # Add timestamp
-        record['timestamp'] = timestamp
-
-        # Add tracked columns
-        for col in HISTORICAL_TRACKED_COLUMNS:
-            record[col] = row.get(col, '')
-
-        # Add change type
-        record['change_type'] = change_type
-
-        return record
+    # -----------------------------------------------------------------------
+    # RETRIEVAL HELPERS
+    # -----------------------------------------------------------------------
 
     def get_product_history(self, unique_size_id):
-        """
-        Get full history for a specific product size
-
-        Args:
-            unique_size_id: Unique size identifier
-
-        Returns:
-            DataFrame: All historical records for this product
-        """
-        try:
-            if not os.path.exists(self.historical_file_path):
-                logger.warning("Historical data file does not exist")
-                return None
-
-            df = pd.read_csv(self.historical_file_path)
-            product_history = df[df['unique_size_id'] == unique_size_id].sort_values('timestamp')
-
-            if product_history.empty:
-                logger.warning(f"Product {unique_size_id} not found in historical data")
-                return None
-
-            return product_history
-
-        except Exception as e:
-            logger.error(f"Error retrieving product history: {e}")
-            return None
+        """Fetch full history for a product from RDS"""
+        return self.db_manager.fetch_historical_by_size(unique_size_id)
 
     def get_statistics(self):
-        """
-        Get statistics about the historical data
-
-        Returns:
-            dict: Statistics including total records, unique products, timestamps, etc.
-        """
-        try:
-            if not os.path.exists(self.historical_file_path):
-                return {
-                    'exists': False,
-                    'total_records': 0,
-                    'unique_products': 0,
-                    'scraping_runs': 0,
-                    'changes_detected': 0
-                }
-
-            df = pd.read_csv(self.historical_file_path)
-
-            # Count different types of changes
-            change_counts = df['change_type'].value_counts().to_dict()
-
-            return {
-                'exists': True,
-                'total_records': len(df),
-                'unique_products': df['unique_size_id'].nunique(),
-                'scraping_runs': df['timestamp'].nunique(),
-                'timestamps': sorted(df['timestamp'].unique().tolist()),
-                'change_counts': change_counts,
-                'initial_records': len(df[df['change_type'] == 'INITIAL']),
-                'change_records': len(df[df['change_type'] != 'INITIAL'])
-            }
-
-        except Exception as e:
-            logger.error(f"Error getting statistics: {e}")
-            return None
-
-    def get_recent_changes(self, limit=50):
-        """
-        Get most recent changes
-
-        Args:
-            limit: Maximum number of records to return
-
-        Returns:
-            DataFrame: Recent change records
-        """
-        try:
-            if not os.path.exists(self.historical_file_path):
-                return None
-
-            df = pd.read_csv(self.historical_file_path)
-
-            # Exclude INITIAL records, sort by timestamp descending
-            changes = df[df['change_type'] != 'INITIAL'].sort_values('timestamp', ascending=False)
-
-            return changes.head(limit)
-
-        except Exception as e:
-            logger.error(f"Error getting recent changes: {e}")
-            return None
+        """Fetch overall statistics from RDS"""
+        return self.db_manager.fetch_historical_statistics()
