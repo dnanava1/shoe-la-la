@@ -13,6 +13,31 @@ def get_connection():
         database=os.getenv("DB_NAME")
     )
 
+def find_unique_size_id(shoe_name, fit_name, color_name, size_label):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    query = """
+        SELECT sv.unique_size_id
+        FROM main_products mp
+        JOIN fit_variants fv ON mp.main_product_id = fv.main_product_id
+        JOIN color_variants cv ON fv.unique_fit_id = cv.unique_fit_id
+        JOIN size_variants sv ON cv.unique_color_id = sv.unique_color_id
+        WHERE mp.name ILIKE %s
+          AND fv.fit_name ILIKE %s
+          AND cv.color_name ILIKE %s
+          AND sv.size_label = %s
+        LIMIT 1;
+    """
+
+    cur.execute(query, (f"%{shoe_name}%", f"%{fit_name}%", f"%{color_name}%", size_label))
+    row = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    return row[0] if row else None
+
 def get_category(gender):
     if gender and gender.lower() == 'men':
         return "Men's Shoes"

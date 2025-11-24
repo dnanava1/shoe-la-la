@@ -1,7 +1,19 @@
+import sys
+import os
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.append(ROOT_DIR)
+
 import streamlit as st
 from nlp.llm_client import parse_shopping_intent
 from database.queries import handle_view_details_query
 from analysis.dashboard import render_analysis_dashboard
+from intent_handlers import (
+    handle_view_details,
+    handle_add_watchlist,
+    handle_remove_watchlist
+)
 
 # ----- Streamlit UI -----
 st.set_page_config(page_title="Nike Shoe Assistant", layout="wide")
@@ -35,6 +47,16 @@ if page == "Chatbot":
             with st.spinner("🔍 Searching for shoes..."):
                 # Call intent classifier
                 intent_json = parse_shopping_intent(prompt)
+                intent = intent_json.get("intent")
+
+                if intent == "view_details":
+                    response = handle_view_details(intent_json)
+
+                elif intent == "add_to_watchlist":
+                    response = handle_add_watchlist(intent_json)
+
+                elif intent == "remove_from_watchlist":
+                    response = handle_remove_watchlist(intent_json)
 
                 # Handle intent
                 if intent_json["intent"] == "view_details":
@@ -43,13 +65,13 @@ if page == "Chatbot":
                         name, color, size_label, price, original_price, discount_percent, color_url = result
                         response = f"""**{name}**
 
-🎨 **Color**: {color}
-📏 **Size**: {size_label}
-💰 **Price**: ${price}
-🏷️ **Original**: ${original_price}
-🎯 **Discount**: {discount_percent}%
+                            🎨 **Color**: {color}
+                            📏 **Size**: {size_label}
+                            💰 **Price**: ${price}
+                            🏷️ **Original**: ${original_price}
+                            🎯 **Discount**: {discount_percent}%
 
-[🔗 View Product]({color_url})"""
+                            [🔗 View Product]({color_url})"""
                     else:
                         response = "❌ Sorry, I couldn't find a matching shoe. Try being more specific!"
                 elif intent_json["intent"] == "search":
@@ -60,7 +82,7 @@ if page == "Chatbot":
                     response = "🤔 I'm not sure how to help with that. Try asking about specific Nike shoes with details like color, size, or model."
 
             # Display assistant response after spinner finishes
-            st.markdown(response)
+            st.markdown(response, unsafe_allow_html=False)
 
         # Save assistant message
         st.session_state.messages.append({"role": "assistant", "content": response})

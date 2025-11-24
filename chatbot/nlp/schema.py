@@ -18,7 +18,7 @@ def as_json_schema() -> Dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            "intent": {"type": "string", "enum": ["search", "recommend", "view_details"]},
+            "intent": {"type": "string", "enum": ["search", "recommend", "view_details","add_to_watchlist","remove_from_watchlist"]},
             "shoe_name": {"type": "string"},
             "constraints": {
                 "type": "object",
