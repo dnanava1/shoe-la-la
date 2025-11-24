@@ -30,6 +30,7 @@ class NikeScraper:
         self.detail_scraper = ProductDetailScraper()
         
         self.main_products = []
+        self.fit_variations = []
         self.color_variations = []
         self.size_availability = []
         self.product_url_to_id = {}
@@ -49,7 +50,7 @@ class NikeScraper:
                 
                 if not product_cards:
                     await self._handle_no_products(page)
-                    return [], [], []
+                    return [], [], [], []
                 
                 # Phase 1: Extract main products
                 await self._extract_main_products(product_cards)
@@ -64,7 +65,7 @@ class NikeScraper:
                 await context.close()
                 await browser.close()
         
-        return self.main_products, self.color_variations, self.size_availability
+        return self.main_products, self.fit_variations, self.color_variations, self.size_availability
     
     async def _navigate_to_page(self, page):
         """Navigate to Nike shoes page"""
@@ -126,7 +127,7 @@ class NikeScraper:
         logger.info(f"✅ Phase 1 complete: {len(self.main_products)} main products extracted")
     
     async def _extract_product_details_async(self, context):
-        """Phase 2: Extract color variations and sizes for each product"""
+        """Phase 2: Extract fit, color variations, and sizes for each product"""
         logger.info("\n=== PHASE 2: Extracting product details ===")
         logger.info(f"Visiting {len(self.main_products)} product pages...")
 
@@ -136,14 +137,12 @@ class NikeScraper:
         # Create tasks for all products
         tasks = []
         for idx, product in enumerate(self.main_products, 1):
-            logger.info(f"[{idx}/{len(self.main_products)}] Processing: {product['name']}")
-
             task = self._scrape_single_product(
-            context,
-            product,
-            idx,
-            len(self.main_products),
-            semaphore,
+                context,
+                product,
+                idx,
+                len(self.main_products),
+                semaphore,
             )
             tasks.append(task)
 
@@ -153,11 +152,12 @@ class NikeScraper:
             if isinstance(result, Exception):
                 logger.error(f"Task Failed with error: {result}")
             elif result:
-                colors, sizes = result
+                fits, colors, sizes = result
+                self.fit_variations.extend(fits)
                 self.color_variations.extend(colors)
                 self.size_availability.extend(sizes)
 
-        logger.info(f"✅ Phase 2 complete: {len(self.color_variations)} colors, {len(self.size_availability)} sizes")
+        logger.info(f"✅ Phase 2 complete: {len(self.fit_variations)} fits, {len(self.color_variations)} colors, {len(self.size_availability)} sizes")
 
     async def _scrape_single_product(self, context, product, idx, total, semaphore):
         """Scrape a single product with semaphore control"""
@@ -165,22 +165,22 @@ class NikeScraper:
             try:
                 logger.info(f"[{idx}/{total}] Processing: {product['name']}")
 
-                colors, sizes = await self.detail_scraper.scrape_product_page(
+                fits, colors, sizes = await self.detail_scraper.scrape_product_page(
                     context,
                     product['base_url'],
                     product['main_product_id']
                 )
 
-                logger.info(f"  → [{idx}/{total}] Found {len(colors)} colors, {len(sizes)} size entries")
+                logger.info(f"  → [{idx}/{total}] Found {len(fits)} fits, {len(colors)} colors, {len(sizes)} size entries")
 
-                # Small delay between requests (less needed with semaphore)
+                # Small delay between requests
                 await asyncio.sleep(DELAY_BETWEEN_PRODUCTS / 3)
 
-                return colors, sizes
+                return fits, colors, sizes
 
             except Exception as e:
                 logger.error(f"Error processing {product.get('name', 'Unknown')}: {e}", exc_info=True)
-                return [], []
+                return [], [], []
     
     async def _handle_no_products(self, page):
         """Handle case where no products are found"""
