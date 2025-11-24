@@ -163,9 +163,24 @@ def get_data_recommendations(seed_shoe, all_shoes_df, top_n=20):
     # Sort descending and return top_n
     top_recommendations = recommendations_df.sort_values(by="data_similarity_score", ascending=False).head(top_n).reset_index(drop=True)
 
+    # Ensure we have all required fields for chatbot display
+    required_fields = ['shoe_id', 'name', 'category', 'price', 'colors', 'gender',
+                      'color_url', 'color_image_url', 'data_similarity_score']
+
+    # Add missing fields with default values if they don't exist
+    for field in required_fields:
+        if field not in top_recommendations.columns:
+            if field == 'color_url':
+                top_recommendations[field] = "#"
+            elif field == 'color_image_url':
+                # Default Nike image
+                top_recommendations[field] = "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/b7d9211c-26e7-431a-ac24-b0540fb3c00f/air-force-1-07-mens-shoes-jBrhbr.png"
+            else:
+                top_recommendations[field] = ""
+
     print(f"[data_recommender]: Found {len(top_recommendations)} data-similar shoes.")
     return top_recommendations
-# data_recommender.py (Add this function)
+
 
 def get_filtered_recommendations(criteria, all_shoes_df, top_n=20):
     print(f"[data_recommender]: Filtering with criteria: {criteria}")
@@ -176,7 +191,7 @@ def get_filtered_recommendations(criteria, all_shoes_df, top_n=20):
         try:
             df = df[df["price"] <= float(criteria["max_price"])]
         except: pass
-        
+
     # Gender Filter
     if criteria.get("gender"):
         target = criteria["gender"].lower()
@@ -192,11 +207,27 @@ def get_filtered_recommendations(criteria, all_shoes_df, top_n=20):
         q = criteria["query"].lower()
         df = df[df["name"].str.lower().str.contains(q) | df["category"].str.lower().str.contains(q)]
 
-    if df.empty: return pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame()
 
     # Sort by Availability then Newest
     sort_cols = [c for c in ["available", "latest_capture_timestamp"] if c in df.columns]
     if sort_cols:
         df = df.sort_values(by=sort_cols, ascending=[False, False])
-    
-    return df.head(top_n).reset_index(drop=True)
+
+    # Ensure required fields for chatbot display
+    result_df = df.head(top_n).reset_index(drop=True)
+
+    required_fields = ['shoe_id', 'name', 'category', 'price', 'colors', 'gender',
+                      'color_url', 'color_image_url']
+
+    for field in required_fields:
+        if field not in result_df.columns:
+            if field == 'color_url':
+                result_df[field] = "#"
+            elif field == 'color_image_url':
+                result_df[field] = "https://static.nike.com/a/images/t_PDP_1728_v1/f_auto,q_auto:eco/b7d9211c-26e7-431a-ac24-b0540fb3c00f/air-force-1-07-mens-shoes-jBrhbr.png"
+            else:
+                result_df[field] = ""
+
+    return result_df

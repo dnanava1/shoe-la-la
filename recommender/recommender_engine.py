@@ -1,6 +1,6 @@
 # recommender_engine.py
 import data_recommender
-
+import pandas as pd
 def get_recommendations(seed_shoe, all_shoes_df):
     """
     Orchestrate recommendation flow: uses data_recommender (stage 1).

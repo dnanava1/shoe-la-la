@@ -51,7 +51,7 @@ def run_app(user_query_name):
     print(final_recommendations[available_cols].head(10).to_string(index=False))
 
     # ---- VISUALIZE RESULTS (NEW PART) ----
-    visualizer.show_recommendations(seed_shoe, final_recommendations)  # 👈 ADD THIS LINE HERE
+#     visualizer.show_recommendations(seed_shoe, final_recommendations)  # 👈 ADD THIS LINE HERE
 
     return final_recommendations
 

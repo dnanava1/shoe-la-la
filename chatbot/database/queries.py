@@ -13,7 +13,7 @@ def get_connection():
         database=os.getenv("DB_NAME")
     )
 
-def find_unique_size_id(shoe_name, fit_name, color_name, size_label):
+def find_unique_size_id(shoe_name, fit_name, color_name, size):
     conn = get_connection()
     cur = conn.cursor()
 
@@ -26,11 +26,11 @@ def find_unique_size_id(shoe_name, fit_name, color_name, size_label):
         WHERE mp.name ILIKE %s
           AND fv.fit_name ILIKE %s
           AND cv.color_name ILIKE %s
-          AND sv.size_label = %s
+          AND sv.size = %s
         LIMIT 1;
     """
 
-    cur.execute(query, (f"%{shoe_name}%", f"%{fit_name}%", f"%{color_name}%", size_label))
+    cur.execute(query, (f"%{shoe_name}%", f"%{fit_name}%", f"%{color_name}%", size))
     row = cur.fetchone()
 
     cur.close()
@@ -195,4 +195,60 @@ def get_shoe_details_by_size_id(unique_size_id):
 
     except Exception as e:
         print(f"Error getting shoe details by size ID: {e}")
+        return None
+
+
+def get_shoe_details_by_color_id(unique_color_id):
+    """
+    Get complete shoe details by unique_color_id
+    Returns details for the first available size
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = """
+        SELECT
+            mp.name,
+            cv.color_name,
+            sv.size_label,
+            p.price,
+            p.original_price,
+            p.discount_percent,
+            cv.color_url,
+            cv.color_image_url,
+            sv.unique_size_id
+        FROM color_variants cv
+        JOIN fit_variants fv ON cv.unique_fit_id = fv.unique_fit_id
+        JOIN main_products mp ON fv.main_product_id = mp.main_product_id
+        JOIN size_variants sv ON cv.unique_color_id = sv.unique_color_id
+        JOIN prices p ON sv.unique_size_id = p.unique_size_id
+        WHERE cv.unique_color_id = %s
+        AND p.available = true
+        ORDER BY p.capture_timestamp DESC
+        LIMIT 1
+        """
+
+        cursor.execute(query, (unique_color_id,))
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result:
+            return {
+                'name': result[0],
+                'color': result[1],
+                'size_label': result[2],
+                'price': result[3],
+                'original_price': result[4],
+                'discount_percent': result[5],
+                'color_url': result[6],
+                'image_url': result[7],
+                'unique_size_id': result[8]
+            }
+        return None
+
+    except Exception as e:
+        print(f"Error getting shoe details by color ID: {e}")
         return None
