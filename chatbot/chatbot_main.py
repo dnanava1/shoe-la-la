@@ -49,34 +49,16 @@ if page == "Chatbot":
                 intent_json = parse_shopping_intent(prompt)
                 intent = intent_json.get("intent")
 
+                # Use intent handlers for ALL intents
                 if intent == "view_details":
                     response = handle_view_details(intent_json)
-
                 elif intent == "add_to_watchlist":
                     response = handle_add_watchlist(intent_json)
-
                 elif intent == "remove_from_watchlist":
                     response = handle_remove_watchlist(intent_json)
-
-                # Handle intent
-                if intent_json["intent"] == "view_details":
-                    result = handle_view_details_query(intent_json)
-                    if result:
-                        name, color, size_label, price, original_price, discount_percent, color_url = result
-                        response = f"""**{name}**
-
-                            🎨 **Color**: {color}
-                            📏 **Size**: {size_label}
-                            💰 **Price**: ${price}
-                            🏷️ **Original**: ${original_price}
-                            🎯 **Discount**: {discount_percent}%
-
-                            [🔗 View Product]({color_url})"""
-                    else:
-                        response = "❌ Sorry, I couldn't find a matching shoe. Try being more specific!"
-                elif intent_json["intent"] == "search":
+                elif intent == "search":
                     response = "🔍 I can help you search! Currently I'm optimized for detailed product lookups. Try asking about a specific shoe model with color and size."
-                elif intent_json["intent"] == "recommend":
+                elif intent == "recommend":
                     response = "💡 I can recommend shoes! Currently I'm optimized for detailed product lookups. Try asking about specific features you want."
                 else:
                     response = "🤔 I'm not sure how to help with that. Try asking about specific Nike shoes with details like color, size, or model."

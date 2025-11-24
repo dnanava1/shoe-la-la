@@ -85,7 +85,8 @@ def handle_view_details_query(intent_json):
             p.price,
             p.original_price,
             p.discount_percent,
-            cv.color_url
+            cv.color_url,
+            cv.color_image_url  -- Added image URL
         FROM main_products mp
         JOIN fit_variants fv ON mp.main_product_id = fv.main_product_id
         JOIN color_variants cv ON fv.unique_fit_id = cv.unique_fit_id
@@ -110,3 +111,88 @@ def handle_view_details_query(intent_json):
     conn.close()
 
     return result
+
+def get_shoe_image_url(shoe_name, color):
+    """
+    Get the image URL for a specific shoe and color combination
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = """
+        SELECT cv.color_image_url
+        FROM color_variants cv
+        JOIN fit_variants fv ON cv.unique_fit_id = fv.unique_fit_id
+        JOIN main_products mp ON fv.main_product_id = mp.main_product_id
+        WHERE mp.name ILIKE %s
+        AND cv.color_name ILIKE %s
+        AND cv.color_image_url IS NOT NULL
+        AND cv.color_image_url != ''
+        LIMIT 1
+        """
+
+        cursor.execute(query, (f'%{shoe_name}%', f'%{color}%'))
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        return result[0] if result else None
+
+    except Exception as e:
+        print(f"Error getting shoe image: {e}")
+        return None
+
+# Additional helper function for watchlist operations
+def get_shoe_details_by_size_id(unique_size_id):
+    """
+    Get complete shoe details by unique_size_id for watchlist display
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        query = """
+        SELECT
+            mp.name,
+            cv.color_name,
+            sv.size_label,
+            p.price,
+            p.original_price,
+            p.discount_percent,
+            cv.color_url,
+            cv.color_image_url
+        FROM size_variants sv
+        JOIN color_variants cv ON sv.unique_color_id = cv.unique_color_id
+        JOIN fit_variants fv ON cv.unique_fit_id = fv.unique_fit_id
+        JOIN main_products mp ON fv.main_product_id = mp.main_product_id
+        JOIN prices p ON sv.unique_size_id = p.unique_size_id
+        WHERE sv.unique_size_id = %s
+        AND p.available = true
+        ORDER BY p.capture_timestamp DESC
+        LIMIT 1
+        """
+
+        cursor.execute(query, (unique_size_id,))
+        result = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if result:
+            return {
+                'name': result[0],
+                'color': result[1],
+                'size_label': result[2],
+                'price': result[3],
+                'original_price': result[4],
+                'discount_percent': result[5],
+                'color_url': result[6],
+                'image_url': result[7]
+            }
+        return None
+
+    except Exception as e:
+        print(f"Error getting shoe details by size ID: {e}")
+        return None
