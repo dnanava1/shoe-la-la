@@ -138,7 +138,7 @@ logger = setup_logger(__name__, level=logging.DEBUG)  # For verbose output
 3. **Test First**: Use TEST_MODE before full scraping
 4. **Backup Data**: Save output directories before re-running
 
-## Troubleshooting
+## Troubleshooting steps
 
 ### No products found
 - Check if Nike's page structure changed
